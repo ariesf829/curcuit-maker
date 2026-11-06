@@ -61,6 +61,14 @@ describe('buildNets', () => {
     expect(sameNet(n, 'r:B', 'bat:+')).toBe(false);
   });
 
+  it('joins duplicate GND pins on a dev board', () => {
+    const esp = part('esp', 'esp32-c3', 0, 0);
+    const n = buildNets([esp], []);
+    expect(sameNet(n, 'esp:GND', 'esp:GND8')).toBe(true);
+    expect(sameNet(n, 'esp:GND', 'esp:3V3')).toBe(false);
+    expect(sameNet(n, 'esp:3V3', 'esp:3V3b')).toBe(true);
+  });
+
   it('respects rotation when matching holes', () => {
     // rotated 90deg: pin B ends up directly below pin A (same column, rows a and d)
     const r = part('r', 'resistor', 100, 100, 1);

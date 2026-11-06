@@ -25,6 +25,19 @@ export function pinWorld(part: Part, pinName: string): Point {
   return { x: part.x + r.x, y: part.y + r.y };
 }
 
+/** Non-breadboard parts with at least one pin plugged into a hole of the given breadboard. */
+export function attachedParts(parts: Part[], board: Part): Part[] {
+  const holes = PART_DEFS.breadboard.pins.map((h) => pinWorld(board, h.name));
+  return parts.filter(
+    (q) =>
+      q.type !== 'breadboard' &&
+      PART_DEFS[q.type].pins.some((pin) => {
+        const pos = pinWorld(q, pin.name);
+        return holes.some((h) => Math.hypot(h.x - pos.x, h.y - pos.y) <= SNAP_DISTANCE);
+      }),
+  );
+}
+
 class UnionFind {
   private parent = new Map<string, string>();
   add(k: string) {
@@ -80,6 +93,20 @@ export function buildNets(parts: Part[], wires: Wire[]): NetList {
   }
 
   for (const w of wires) uf.union(pinKey(w.from), pinKey(w.to));
+
+  // Duplicate power/ground pins on a dev board (GND, GND2, 3V3b, ...) are one net.
+  for (const part of parts) {
+    if (!part.type.startsWith('esp32')) continue;
+    const firstByBase = new Map<string, string>();
+    for (const pin of PART_DEFS[part.type].pins) {
+      const m = /^(GND|3V3|5V)(\d|b)*$/.exec(pin.name);
+      if (!m) continue;
+      const key = `${part.id}:${pin.name}`;
+      const head = firstByBase.get(m[1]);
+      if (head) uf.union(head, key);
+      else firstByBase.set(m[1], key);
+    }
+  }
 
   for (const bb of boards) {
     const holes = PART_DEFS.breadboard.pins.map((h) => ({ key: `${bb.id}:${h.name}`, pos: pinWorld(bb, h.name) }));

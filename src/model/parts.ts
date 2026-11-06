@@ -23,6 +23,7 @@ export type PartType =
   | 'motor'
   | 'servo'
   | 'i2c-sensor'
+  | 'lcd1602'
   | 'multimeter';
 
 export interface PinDef {
@@ -109,7 +110,7 @@ const defs: PartDef[] = [
     'esp32-devkit-v1',
     'ESP32 DevKit V1',
     ['EN', 'VP', 'VN', 'D34', 'D35', 'D32', 'D33', 'D25', 'D26', 'D27', 'D14', 'D12', 'D13', 'GND', 'VIN'],
-        ['D23', 'D22', 'TX0', 'RX0', 'D21', 'D19', 'D18', 'D5', 'TX2', 'RX2', 'D4', 'D2', 'D15', 'GND2', '3V3'],
+    ['D23', 'D22', 'TX0', 'RX0', 'D21', 'D19', 'D18', 'D5', 'TX2', 'RX2', 'D4', 'D2', 'D15', 'GND2', '3V3'],
     '#1f3a5f',
   ),
   board(
@@ -122,8 +123,8 @@ const defs: PartDef[] = [
   board(
     'esp32-c3',
     'ESP32-C3 DevKitM',
-    ['GND', '3V3', '3V3b', 'D2', 'D3', 'GND2', 'RST', 'GND3', 'D8', 'D9', 'D10', 'D1', 'D0', 'D4', 'D5'],
-    ['5V', '5Vb', 'GND4', 'D6', 'D7', 'GND5', 'TX', 'RX', 'D18', 'D19', 'GND6', 'GND7', 'D20', 'D21', 'GND8'],
+    ['GND', '3V3', '3V3b', 'D2', 'D3', 'GND2', 'RST', 'GND3', 'D0', 'D1', 'D10', 'GND4', '5V', '5Vb', 'GND5'],
+    ['GND6', 'TX', 'RX', 'GND7', 'D9', 'D8', 'D7', 'GND8', 'D6', 'D5', 'D4', 'GND9', 'D18', 'D19', 'GND10'],
     '#1f5f4a',
   ),
   { type: 'resistor', label: 'Resistor', prefix: 'R', category: 'Passive', pins: [p('A', 0, 0), p('B', 60, 0)], body: { x: 10, y: -8, w: 40, h: 16 }, color: '#d9b26f' },
@@ -144,6 +145,7 @@ const defs: PartDef[] = [
   { type: 'usb5v', label: 'USB 5V', prefix: 'USB', category: 'Power', pins: [p('5V', 0, 0), p('GND', 20, 0)], body: { x: -8, y: -32, w: 36, h: 26 }, color: '#9aa4ad' },
   { type: 'buck', label: 'Buck Converter', prefix: 'BUCK', category: 'Power', pins: [p('IN+', 0, 0), p('IN-', 0, 20), p('OUT+', 80, 0), p('OUT-', 80, 20)], body: { x: 6, y: -10, w: 68, h: 40 }, color: '#1f6fb2' },
   { type: 'i2c-sensor', label: 'I2C Sensor', prefix: 'SNS', category: 'Sensors & Tools', pins: [p('VCC', 0, 0), p('GND', 20, 0), p('SDA', 40, 0), p('SCL', 60, 0)], body: { x: -8, y: -36, w: 76, h: 30 }, color: '#2f8f6f' },
+  { type: 'lcd1602', label: 'I2C LCD 16x2', prefix: 'LCD', category: 'Sensors & Tools', pins: [p('GND', 0, 0), p('VCC', 20, 0), p('SDA', 40, 0), p('SCL', 60, 0)], body: { x: -20, y: -70, w: 100, h: 64 }, color: '#1f6f4a' },
   { type: 'multimeter', label: 'Multimeter', prefix: 'MM', category: 'Sensors & Tools', pins: [p('V/A', 0, 0), p('COM', 40, 0)], body: { x: -8, y: -44, w: 56, h: 38 }, color: '#d8c43a' },
 ];
 

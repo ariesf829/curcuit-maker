@@ -1,4 +1,6 @@
 import { Canvas } from './components/Canvas';
+import { CodePanel } from './components/CodePanel';
+import { FileMenu } from './components/FileMenu';
 import { NetPanel } from './components/NetPanel';
 import { Palette } from './components/Palette';
 
@@ -7,12 +9,16 @@ export default function App() {
     <div className="app">
       <header>
         <strong>ESP32 Circuit Simulator</strong>
-        <span className="phase">Phase 1 · editor &amp; connectivity</span>
+        <span className="phase">Phase 7 · Projects</span>
+        <FileMenu />
       </header>
       <Palette />
-      <main>
-        <Canvas />
-      </main>
+      <div className="workspace">
+        <main>
+          <Canvas />
+        </main>
+        <CodePanel />
+      </div>
       <NetPanel />
     </div>
   );
