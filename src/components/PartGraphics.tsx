@@ -8,7 +8,7 @@ import { useLcd } from '../state/lcdStore';
 import { useServo } from '../state/servoStore';
 
 /** Parts that have a drawn picture instead of a plain rectangle. */
-export const HAS_GRAPHIC = new Set<Part['type']>(['led', 'motor', 'relay', 'potentiometer', 'button', 'lcd1602', 'servo']);
+export const HAS_GRAPHIC = new Set<Part['type']>(['led', 'motor', 'relay', 'potentiometer', 'button', 'switch', 'lcd1602', 'servo']);
 
 const POT_SWEEP_DEG = 270;
 const POT_DRAG_PX = 160;
@@ -74,6 +74,32 @@ function PushButton({ part }: { part: Part }) {
       <circle cx={20} cy={0} r={pressed ? 7 : 8.5} fill={pressed ? '#a8322d' : '#e5484d'} stroke="#111" strokeWidth={1.5} onPointerDown={down} style={{ cursor: 'pointer' }}>
         <title>Hold to press</title>
       </circle>
+    </g>
+  );
+}
+
+function ToggleSwitch({ part }: { part: Part }) {
+  const closed = (part.params?.closed ?? 0) === 1;
+  const toggle = (e: ReactPointerEvent) => {
+    e.stopPropagation();
+    const { select, setParam } = useCircuit.getState();
+    select({ kind: 'part', id: part.id });
+    setParam(part.id, 'closed', closed ? 0 : 1);
+  };
+  return (
+    <g>
+      <line x1={0} y1={0} x2={8} y2={0} stroke="#c9ced6" strokeWidth={2} pointerEvents="none" />
+      <line x1={32} y1={0} x2={40} y2={0} stroke="#c9ced6" strokeWidth={2} pointerEvents="none" />
+      <rect x={6} y={-14} width={28} height={28} rx={4} fill="#2b3039" stroke="#0d0f13" pointerEvents="none" />
+      <circle cx={11} cy={0} r={2.5} fill="#c9ced6" pointerEvents="none" />
+      <circle cx={29} cy={0} r={2.5} fill="#c9ced6" pointerEvents="none" />
+      <rect x={11} y={-9} width={18} height={18} rx={9} fill={closed ? '#1f6f3f' : '#3a3f48'} stroke="#0d0f13" onPointerDown={toggle} style={{ cursor: 'pointer' }}>
+        <title>{closed ? 'Closed (click to open)' : 'Open (click to close)'}</title>
+      </rect>
+      <line x1={11} y1={0} x2={closed ? 29 : 26} y2={closed ? 0 : -11} stroke={closed ? '#6fdc8c' : '#e8ecf2'} strokeWidth={3} strokeLinecap="round" pointerEvents="none" />
+      <text x={20} y={26} textAnchor="middle" className="part-readout" pointerEvents="none">
+        {closed ? 'ON' : 'OFF'}
+      </text>
     </g>
   );
 }
@@ -276,6 +302,8 @@ export function PartGraphic({ part, sim }: { part: Part; sim: SimResult }) {
       return <Relay part={part} sim={sim} />;
     case 'potentiometer':
       return <Potentiometer part={part} />;
+    case 'switch':
+      return <ToggleSwitch part={part} />;
     case 'button':
       return <PushButton part={part} />;
     default:

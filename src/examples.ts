@@ -118,7 +118,7 @@ function button(): Example {
     summary: 'A push button on a pin with the internal pull-up enabled. Pressing it pulls the pin to ground.',
     steps: [
       'Press Run. The LED is off because the button is not pressed.',
-      'Select BTN1 and tick "Pressed". The LED turns on.',
+      'Click and hold the red cap on BTN1. The LED turns on while you hold it.',
       'The pin reads HIGH (3.3 V) when released and LOW when pressed, which is why the code tests for LOW.',
     ],
     parts: b.parts,
