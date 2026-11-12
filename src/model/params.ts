@@ -55,7 +55,7 @@ export const PARAMS: Partial<Record<PartType, ParamDef[]>> = {
   ],
   servo: [{ key: 'runMa', label: 'Running current @5 V', unit: 'mA', default: 250, min: 10 }],
   buck: [
-    { key: 'vout', label: 'Output voltage', unit: 'V', default: 5, min: 1, max: 30 },
+    { key: 'vout', label: 'Output voltage', unit: 'V', default: 5, min: 1.25, max: 35 },
     { key: 'ratedA', label: 'Max output current', unit: 'A', default: 2, min: 0.1 },
     { key: 'eff', label: 'Efficiency', unit: '0-1', default: 0.85, min: 0.3, max: 0.99 },
   ],

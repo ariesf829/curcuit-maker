@@ -5,7 +5,10 @@ import {
   BJT_MAX_VCE,
   BJT_MAX_WATTS,
   BUCK_DROPOUT_VOLTS,
+  BUCK_MAX_VOUT,
   BUCK_MAX_VIN,
+  BUCK_MIN_VIN,
+  BUCK_MIN_VOUT,
   MOS_FULLY_ON_VGS,
   MOS_MAX_VDS,
   MOS_MAX_VGS,
@@ -230,12 +233,20 @@ export function checkDevices(parts: Part[], sim: SimResult): Issue[] {
 
       case 'buck': {
         const vin = volts(part, 'IN+') - volts(part, 'IN-');
-        const vset = param(part, 'vout');
+        const vset = Math.max(BUCK_MIN_VOUT, Math.min(BUCK_MAX_VOUT, param(part, 'vout')));
         const out = el(part, 'output');
         const input = el(part, 'input draw');
         const nets = input ? [input.netA, input.netB] : [];
         const base = { partIds: [part.id], nets };
-        if (vin > BUCK_MAX_VIN) {
+        if (vin < BUCK_MIN_VIN && vin > 0) {
+          push({
+            ...base,
+            id: `buck-vin-low:${part.id}`,
+            severity: 'error',
+            title: `${part.name}: input voltage too low`,
+            detail: `${vin.toFixed(1)} V is below the ${BUCK_MIN_VIN} V minimum input voltage.`,
+          });
+        } else if (vin > BUCK_MAX_VIN) {
           push({
             ...base,
             id: `buck-vin:${part.id}`,
@@ -243,7 +254,7 @@ export function checkDevices(parts: Part[], sim: SimResult): Issue[] {
             title: `${part.name}: input voltage too high`,
             detail: `${vin.toFixed(1)} V exceeds the ${BUCK_MAX_VIN} V input limit.`,
           });
-        } else if (vin > 2 && vin < vset + BUCK_DROPOUT_VOLTS) {
+        } else if (vin >= BUCK_MIN_VIN && vin <= BUCK_MAX_VIN && vin < vset + BUCK_DROPOUT_VOLTS) {
           push({
             ...base,
             id: `buck-low:${part.id}`,

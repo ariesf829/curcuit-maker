@@ -60,6 +60,7 @@ export function Inspector() {
         <p className="hint">Connect BAT+/- to a 6-25.2 V battery, SIG to an ESP32 pin, and GND to ESP32 GND. Hold Servo.write(0) for 1 second to arm, then use 0-180 for throttle. The red lead provides a simulated 5 V BEC.</p>
       )}
       {part.type === 'brushless-motor' && <p className="hint">Connect A/B/C to the ESC's three motor outputs. Rotor speed follows the ESC throttle; phase current is not modeled.</p>}
+      {part.type === 'buck' && <p className="hint">Input range: 3.2–35 V. Adjustable output: 1.25–35 V, with at least 1 V input headroom required to regulate.</p>}
       {defs.map((d) => {
         const value = part.params?.[d.key] ?? d.default;
         return (

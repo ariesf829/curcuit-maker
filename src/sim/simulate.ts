@@ -4,6 +4,10 @@ import { param } from '../model/params';
 import { PART_DEFS } from '../model/parts';
 import {
   BUCK_DROPOUT_VOLTS,
+  BUCK_MAX_VIN,
+  BUCK_MAX_VOUT,
+  BUCK_MIN_VIN,
+  BUCK_MIN_VOUT,
   METER_AMMETER_OHMS,
   METER_VOLTMETER_OHMS,
   MOS_FULLY_ON_VGS,
@@ -313,7 +317,10 @@ function nextState(parts: Part[], nets: NetList, sol: SolveResult, state: State)
     } else if (part.type === 'buck') {
       const old = state.bucks.get(part.id) ?? { vout: param(part, 'vout'), iin: 0 };
       const vin = volts(part, 'IN+') - volts(part, 'IN-');
-      const vout = vin < 2 ? 0 : Math.max(0, Math.min(param(part, 'vout'), vin - BUCK_DROPOUT_VOLTS));
+      const requestedVout = Math.max(BUCK_MIN_VOUT, Math.min(BUCK_MAX_VOUT, param(part, 'vout')));
+      const vout = vin < BUCK_MIN_VIN || vin > BUCK_MAX_VIN
+        ? 0
+        : Math.max(0, Math.min(requestedVout, vin - BUCK_DROPOUT_VOLTS));
       const out = sol.elements.get(`${part.id}:OUT`);
       const iout = out ? Math.max(0, -out.current) : 0;
       const iin = (vout * iout) / (param(part, 'eff') * Math.max(vin, 1));

@@ -131,9 +131,9 @@ describe('relay', () => {
 });
 
 describe('buck converter', () => {
-  function circuit(vin: number, loadOhms: number) {
+  function circuit(vin: number, loadOhms: number, vout = 5) {
     const bat = mk('battery', { voltage: vin, rint: 0.05 });
-    const buck = mk('buck', { vout: 5, eff: 0.85 });
+    const buck = mk('buck', { vout, eff: 0.85 });
     const load = mk('resistor', { ohms: loadOhms });
     const wires = [
       wire(bat, '+', buck, 'IN+'),
@@ -158,6 +158,26 @@ describe('buck converter', () => {
   it('cannot hold 5 V from a 4 V input', () => {
     const { load, sim } = circuit(4, 50);
     expect(pinVoltage(sim, load.id, 'A')).toBeLessThan(3.2);
+  });
+
+  it('adjusts the output down to the 1.25 V minimum', () => {
+    const { buck, load, sim } = circuit(5, 100, 1.25);
+    expect(pinVoltage(sim, load.id, 'A')).toBeCloseTo(1.25, 2);
+    expect(sim.bucks.get(buck.id)?.vout).toBeCloseTo(1.25, 2);
+  });
+
+  it('supports a 35 V output target with the expected headroom', () => {
+    const { buck, load, sim } = circuit(35, 1000, 35);
+    expect(pinVoltage(sim, load.id, 'A')).toBeCloseTo(34, 1);
+    expect(sim.bucks.get(buck.id)?.vout).toBeCloseTo(34, 1);
+  });
+
+  it('turns the output off outside the 3.2-35 V input range', () => {
+    for (const vin of [3.1, 35.1]) {
+      const { buck, load, sim } = circuit(vin, 100);
+      expect(sim.bucks.get(buck.id)?.vout).toBeCloseTo(0, 2);
+      expect(pinVoltage(sim, load.id, 'A')).toBeCloseTo(0, 2);
+    }
   });
 });
 

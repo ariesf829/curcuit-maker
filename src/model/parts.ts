@@ -147,7 +147,7 @@ const defs: PartDef[] = [
   { type: 'brushless-motor', label: 'Brushless Motor', prefix: 'BLM', category: 'Loads & Switching', pins: [p('A', -20, 0), p('B', 0, 0), p('C', 20, 0)], body: { x: -38, y: -72, w: 76, h: 64 }, color: '#737b86' },
   { type: 'battery', label: 'Battery', prefix: 'BAT', category: 'Power', pins: [p('+', 0, 0), p('-', 40, 0)], body: { x: -8, y: -36, w: 56, h: 30 }, color: '#c98a2b' },
   { type: 'usb5v', label: 'USB 5V', prefix: 'USB', category: 'Power', pins: [p('5V', 0, 0), p('GND', 20, 0)], body: { x: -8, y: -32, w: 36, h: 26 }, color: '#9aa4ad' },
-  { type: 'buck', label: 'Buck Converter', prefix: 'BUCK', category: 'Power', pins: [p('IN+', 0, 0), p('IN-', 0, 20), p('OUT+', 80, 0), p('OUT-', 80, 20)], body: { x: 6, y: -10, w: 68, h: 40 }, color: '#1f6fb2' },
+  { type: 'buck', label: 'DC-DC Adjustable Buck Converter', prefix: 'BUCK', category: 'Power', pins: [p('IN+', 0, 0), p('IN-', 0, 20), p('OUT+', 80, 0), p('OUT-', 80, 20)], body: { x: 6, y: -10, w: 68, h: 40 }, color: '#1f6fb2' },
   { type: 'i2c-sensor', label: 'I2C Sensor', prefix: 'SNS', category: 'Sensors & Tools', pins: [p('VCC', 0, 0), p('GND', 20, 0), p('SDA', 40, 0), p('SCL', 60, 0)], body: { x: -8, y: -36, w: 76, h: 30 }, color: '#2f8f6f' },
   { type: 'lcd1602', label: 'I2C LCD 16x2', prefix: 'LCD', category: 'Sensors & Tools', pins: [p('GND', 0, 0), p('VCC', 20, 0), p('SDA', 40, 0), p('SCL', 60, 0)], body: { x: -20, y: -70, w: 100, h: 64 }, color: '#1f6f4a' },
   { type: 'multimeter', label: 'Multimeter', prefix: 'MM', category: 'Sensors & Tools', pins: [p('V/A', 0, 0), p('COM', 40, 0)], body: { x: -8, y: -44, w: 56, h: 38 }, color: '#d8c43a' },
