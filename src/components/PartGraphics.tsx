@@ -6,9 +6,11 @@ import type { SimResult } from '../sim/simulate';
 import { useCircuit } from '../state/circuitStore';
 import { useLcd } from '../state/lcdStore';
 import { useServo } from '../state/servoStore';
+import { useEsc } from '../state/escStore';
+import { findMotorEsc } from '../sim/escBus';
 
 /** Parts that have a drawn picture instead of a plain rectangle. */
-export const HAS_GRAPHIC = new Set<Part['type']>(['led', 'motor', 'relay', 'potentiometer', 'button', 'switch', 'lcd1602', 'servo', 'esc']);
+export const HAS_GRAPHIC = new Set<Part['type']>(['led', 'motor', 'relay', 'potentiometer', 'button', 'switch', 'lcd1602', 'servo', 'esc', 'brushless-motor']);
 
 const POT_SWEEP_DEG = 270;
 const POT_DRAG_PX = 160;
@@ -288,7 +290,8 @@ function Servo({ part }: { part: Part }) {
   );
 }
 
-function Esc() {
+function Esc({ part }: { part: Part }) {
+  const state = useEsc((s) => s.states[part.id]);
   const motorPhases = [
     { y: -26, color: '#e78b32' },
     { y: 0, color: '#e3c33d' },
@@ -327,6 +330,56 @@ function Esc() {
       <text x={0} y={-5} textAnchor="middle" fontSize={10} fontWeight={700} fill="#f2f4f8">BRUSHLESS ESC</text>
       <text x={0} y={11} textAnchor="middle" fontSize={7} fill="#bac3d1">3-PHASE SPEED CONTROLLER</text>
       <text x={0} y={25} textAnchor="middle" fontSize={7} fill="#bac3d1">XT60 · 3.5 mm BULLETS</text>
+      <text x={0} y={34} textAnchor="middle" fontSize={6} fill={state?.armed ? '#6fdc8c' : '#f0c46b'}>
+        {state?.armed ? `ARMED · ${Math.round(state.throttle * 100)}%` : 'SAFE · LOW THROTTLE TO ARM'}
+      </text>
+    </g>
+  );
+}
+
+function BrushlessMotor({ part, sim }: { part: Part; sim: SimResult }) {
+  const parts = useCircuit((s) => s.parts);
+  const esc = findMotorEsc(parts, sim, part.id);
+  const state = useEsc((s) => esc ? s.states[esc.id] : undefined);
+  const speed = state?.armed ? state.throttle * MAX_DEG_PER_SECOND : 0;
+  const rotor = useRef<SVGGElement>(null);
+  const speedRef = useRef(speed);
+
+  useEffect(() => {
+    speedRef.current = speed;
+  }, [speed]);
+
+  useEffect(() => {
+    const t = { raf: 0, last: performance.now(), deg: 0 };
+    const frame = (now: number) => {
+      const dt = Math.min(0.1, (now - t.last) / 1000);
+      t.last = now;
+      if (speedRef.current !== 0) {
+        t.deg = (t.deg + speedRef.current * dt) % 360;
+        rotor.current?.setAttribute('transform', `rotate(${t.deg} 0 -43)`);
+      }
+      t.raf = requestAnimationFrame(frame);
+    };
+    t.raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(t.raf);
+  }, []);
+
+  return (
+    <g pointerEvents="none">
+      <path d="M -20 0 V -8 M 0 0 V -8 M 20 0 V -8" stroke="#c6cbd2" strokeWidth={2} />
+      <rect x={-27} y={-68} width={54} height={58} rx={8} fill="#343a44" stroke="#16191e" strokeWidth={2} />
+      <rect x={-21} y={-62} width={42} height={46} rx={5} fill="#68717d" stroke="#9ca4ae" />
+      <circle cx={0} cy={-43} r={16} fill="#252a32" stroke="#c6cbd2" strokeWidth={2} />
+      <circle cx={0} cy={-43} r={11} fill="#535c68" />
+      <g ref={rotor}>
+        <path d="M -2 -54 H 2 V -32 H -2 Z M -11 -45 H 11 V -41 H -11 Z" fill="#e1e6ed" />
+        <circle cx={0} cy={-54} r={2.5} fill="#ef7541" />
+      </g>
+      <circle cx={0} cy={-43} r={3} fill="#252a32" />
+      <text x={0} y={-20} textAnchor="middle" fontSize={6} fill="#f2f4f8">BLDC</text>
+      <text x={0} y={15} textAnchor="middle" className="part-readout">
+        {state?.armed ? `${Math.round(state.throttle * 100)}%` : 'STOP'}
+      </text>
     </g>
   );
 }
@@ -334,7 +387,9 @@ function Esc() {
 export function PartGraphic({ part, sim }: { part: Part; sim: SimResult }) {
   switch (part.type) {
     case 'esc':
-      return <Esc />;
+      return <Esc part={part} />;
+    case 'brushless-motor':
+      return <BrushlessMotor part={part} sim={sim} />;
     case 'servo':
       return <Servo part={part} />;
     case 'lcd1602':

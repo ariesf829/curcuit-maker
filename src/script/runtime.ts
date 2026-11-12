@@ -26,6 +26,10 @@ export interface RuntimeIO {
   servoBus(boardId: string, pin: string): { partIds: string[] } | { problem: string };
   /** Sets the commanded horn angle of a servo part; null forgets it. */
   servoShow(partId: string, angle: number | null): void;
+  /** Finds ESCs connected to the specified ESP32 output. */
+  escBus(boardId: string, pin: string): { partIds: string[] } | { problem: string };
+  /** Updates an ESC's simulated arming and throttle state; null clears it. */
+  escShow(partId: string, throttle: number | null, armed?: boolean): void;
 }
 
 const DEFAULT_I2C_GPIOS: Record<string, [number, number]> = { 'esp32-devkit-v1': [21, 22] };
@@ -35,6 +39,9 @@ interface ServoSlot {
   gpio: number | null;
   angle: number | null;
   shownOn: string[];
+  shownOnEscs: string[];
+  escLowSinceUs: number | null;
+  escArmed: boolean;
 }
 
 interface LcdSlot {
@@ -58,7 +65,6 @@ export class ScriptRuntime {
   private lcds = new Map<string, LcdSlot>();
   private lcdDirty = new Set<string>();
   private servos = new Map<string, ServoSlot>();
-  private servoDirty = new Set<string>();
   private i2c: { sda?: number; scl?: number } = {};
 
   private io: RuntimeIO;
@@ -115,6 +121,8 @@ export class ScriptRuntime {
     for (const slot of this.servos.values()) {
       for (const id of slot.shownOn) this.io.servoShow(id, null);
       slot.shownOn = [];
+      for (const id of slot.shownOnEscs) this.io.escShow(id, null);
+      slot.shownOnEscs = [];
     }
     for (const slot of this.lcds.values()) {
       if (slot.shownOn) this.io.lcdShow(slot.shownOn, null);
@@ -123,9 +131,7 @@ export class ScriptRuntime {
   }
 
   private flushServos() {
-    for (const key of this.servoDirty) {
-      const slot = this.servos.get(key);
-      if (!slot) continue;
+    for (const [key, slot] of this.servos) {
       const pin = slot.gpio === null ? undefined : this.pinName(slot.gpio);
       const found = pin ? this.io.servoBus(this.boardId, pin) : undefined;
       const ids = found && 'partIds' in found ? found.partIds : [];
@@ -133,8 +139,22 @@ export class ScriptRuntime {
       for (const id of slot.shownOn) if (!ids.includes(id)) this.io.servoShow(id, null);
       slot.shownOn = ids;
       if (slot.angle !== null) for (const id of ids) this.io.servoShow(id, slot.angle);
+
+      const escs = pin ? this.io.escBus(this.boardId, pin) : undefined;
+      const escIds = escs && 'partIds' in escs ? escs.partIds : [];
+      if (escs && 'problem' in escs) this.warnOnce(`esc:${key}:${escs.problem}`, escs.problem);
+      for (const id of slot.shownOnEscs) if (!escIds.includes(id)) this.io.escShow(id, null);
+      slot.shownOnEscs = escIds;
+      if (slot.angle !== null) {
+        if (slot.angle <= 5) {
+          slot.escLowSinceUs ??= this.clockUs;
+          if (this.clockUs - slot.escLowSinceUs >= 1_000_000) slot.escArmed = true;
+        } else if (!slot.escArmed) {
+          slot.escLowSinceUs = null;
+        }
+        for (const id of escIds) this.io.escShow(id, slot.escArmed ? Math.max(0, Math.min(1, slot.angle / 180)) : 0, slot.escArmed);
+      }
     }
-    this.servoDirty.clear();
   }
 
   private flushLcds() {
@@ -244,11 +264,17 @@ export class ScriptRuntime {
         this.lcdDirty.add(name);
       },
       servoPulse: (gpio, key, angle) => {
-        const slot = this.servos.get(key) ?? { gpio: null, angle: null, shownOn: [] };
+        const slot = this.servos.get(key) ?? {
+          gpio: null,
+          angle: null,
+          shownOn: [],
+          shownOnEscs: [],
+          escLowSinceUs: null,
+          escArmed: false,
+        };
         this.servos.set(key, slot);
         slot.gpio = gpio;
         slot.angle = angle;
-        this.servoDirty.add(key);
       },
     };
   }

@@ -28,6 +28,9 @@ const SERVO_REF_VOLTS = 5;
 const SENSOR_REF_VOLTS = 3.3;
 const LCD_REF_VOLTS = 5;
 const I2C_PULLUP_OHMS = 10000;
+const ESC_BEC_VOLTS = 5;
+const ESC_BEC_MIN_INPUT_VOLTS = 6;
+const ESC_BEC_MAX_INPUT_VOLTS = 25.2;
 
 const BUCK_OUT_OHMS = 0.05;
 const BUCK_GROUND_TIE_OHMS = 1e-3;
@@ -68,6 +71,8 @@ export interface SimResult {
   poweredBoards: Set<string>;
   /** Relays whose coil is energised. */
   relays: Set<string>;
+  /** ESCs with a valid 2S-6S supply and an active 5 V BEC output. */
+  poweredEscs: Set<string>;
   /** Output voltage and input current of each buck converter. */
   bucks: Map<string, { vout: number; iin: number }>;
 }
@@ -81,6 +86,7 @@ export interface Probe {
 interface State {
   powered: Set<string>;
   relays: Set<string>;
+  poweredEscs: Set<string>;
   bucks: Map<string, { vout: number; iin: number }>;
 }
 
@@ -233,6 +239,19 @@ function build(parts: Part[], nets: NetList, state: State, probe?: Probe): Build
       case 'servo':
         resistor(part, 'R', 'V+', 'GND', SERVO_REF_VOLTS / (param(part, 'runMa') / 1000), 'motor and electronics');
         break;
+      case 'esc':
+        resistor(part, 'GND', 'BAT-', 'GND', BUCK_GROUND_TIE_OHMS, 'battery/receiver ground');
+        if (state.poweredEscs.has(part.id)) {
+          add(part, 'BEC', '5 V BEC output', 'supply', '+5V', 'GND', (a, b, id) => ({
+            kind: 'V',
+            id,
+            a,
+            b,
+            v: ESC_BEC_VOLTS,
+            r: BUCK_OUT_OHMS,
+          }));
+        }
+        break;
       case 'i2c-sensor':
         resistor(part, 'R', 'VCC', 'GND', SENSOR_REF_VOLTS / (param(part, 'ma') / 1000), 'supply');
         if (param(part, 'pullups')) {
@@ -281,12 +300,16 @@ function nextState(parts: Part[], nets: NetList, sol: SolveResult, state: State)
   }
 
   const relays = new Set<string>();
+  const poweredEscs = new Set<string>();
   const bucks = new Map<string, { vout: number; iin: number }>();
   for (const part of parts) {
     if (part.type === 'relay') {
       const coilV = param(part, 'coilV');
       const v = Math.abs(volts(part, 'COIL+') - volts(part, 'COIL-'));
       if (v >= RELAY_PULL_IN * coilV || (v > RELAY_DROP_OUT * coilV && state.relays.has(part.id))) relays.add(part.id);
+    } else if (part.type === 'esc') {
+      const vin = volts(part, 'BAT+') - volts(part, 'BAT-');
+      if (vin >= ESC_BEC_MIN_INPUT_VOLTS && vin <= ESC_BEC_MAX_INPUT_VOLTS) poweredEscs.add(part.id);
     } else if (part.type === 'buck') {
       const old = state.bucks.get(part.id) ?? { vout: param(part, 'vout'), iin: 0 };
       const vin = volts(part, 'IN+') - volts(part, 'IN-');
@@ -298,12 +321,12 @@ function nextState(parts: Part[], nets: NetList, sol: SolveResult, state: State)
       bucks.set(part.id, { vout: (old.vout + vout) / 2, iin: (old.iin + iin) / 2 });
     }
   }
-  return { powered, relays, bucks };
+  return { powered, relays, poweredEscs, bucks };
 }
 
 function sameState(a: State, b: State): boolean {
   const same = (x: Set<string>, y: Set<string>) => x.size === y.size && [...x].every((k) => y.has(k));
-  if (!same(a.powered, b.powered) || !same(a.relays, b.relays)) return false;
+  if (!same(a.powered, b.powered) || !same(a.relays, b.relays) || !same(a.poweredEscs, b.poweredEscs)) return false;
   for (const [id, now] of b.bucks) {
     const before = a.bucks.get(id);
     if (!before || Math.abs(before.vout - now.vout) > BUCK_VOUT_TOLERANCE || Math.abs(before.iin - now.iin) > BUCK_IIN_TOLERANCE) return false;
@@ -313,7 +336,7 @@ function sameState(a: State, b: State): boolean {
 
 export function simulate(parts: Part[], wires: Wire[], probe?: Probe): SimResult {
   const nets = buildNets(parts, wires);
-  let state: State = { powered: new Set(), relays: new Set(), bucks: new Map() };
+  let state: State = { powered: new Set(), relays: new Set(), poweredEscs: new Set(), bucks: new Map() };
   let b!: Build;
   let sol!: SolveResult;
   let settled = false;
@@ -357,6 +380,7 @@ export function simulate(parts: Part[], wires: Wire[], probe?: Probe): SimResult
     warnings,
     poweredBoards: new Set([...state.powered, ...usbBoards]),
     relays: state.relays,
+    poweredEscs: state.poweredEscs,
     bucks: state.bucks,
   };
 }

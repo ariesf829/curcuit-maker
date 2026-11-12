@@ -5,7 +5,9 @@ import { ScriptRuntime, type RuntimeIO } from '../script/runtime';
 import { pinVoltage } from '../sim/simulate';
 import { solveCircuit } from '../sim/solved';
 import { findLcd } from '../sim/i2cBus';
+import { findEscs } from '../sim/escBus';
 import { findServos } from '../sim/servoBus';
+import { useEsc } from './escStore';
 import { useLcd } from './lcdStore';
 import { useServo } from './servoStore';
 import { useCircuit } from './circuitStore';
@@ -60,6 +62,7 @@ function releaseBoard() {
   runtime = undefined;
   useLcd.getState().clear();
   useServo.getState().clear();
+  useEsc.getState().clear();
 }
 
 export const useScript = create<ScriptState>((set, get) => {
@@ -123,6 +126,11 @@ export const useScript = create<ScriptState>((set, get) => {
           return findServos(parts, solveCircuit(parts, wires).sim, id, pin);
         },
         servoShow: (partId, angle) => useServo.getState().show(partId, angle),
+        escBus: (id, pin) => {
+          const { parts, wires } = useCircuit.getState();
+          return findEscs(parts, solveCircuit(parts, wires).sim, id, pin);
+        },
+        escShow: (partId, throttle, armed) => useEsc.getState().show(partId, throttle, armed),
       };
       boardId = board.id;
       const rt = new ScriptRuntime(program, io, board.id);

@@ -22,6 +22,8 @@ function setup(wires = ex.wires, source = ex.source, ms = 1000) {
     servoShow: (id, a) => {
       angles[id] = a;
     },
+    escBus: () => ({ partIds: [] }),
+    escShow: () => {},
   };
   const rt = new ScriptRuntime(parse(source), io, 'esp');
   for (let t = 0; t < ms; t += 10) rt.tick(10);

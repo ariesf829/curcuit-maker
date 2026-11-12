@@ -24,6 +24,8 @@ function setup(mutate?: (e: typeof lcdExample) => { parts: typeof lcdExample.par
     },
     servoBus: () => ({ problem: 'no servo' }),
     servoShow: () => {},
+    escBus: () => ({ partIds: [] }),
+    escShow: () => {},
   };
   const rt = new ScriptRuntime(parse(source), io, 'esp');
   for (let t = 0; t < 1200; t += 10) rt.tick(10);

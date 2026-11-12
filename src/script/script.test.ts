@@ -24,6 +24,8 @@ function run(src: string, ms: number, volts: (pin: string) => number = () => 0) 
     lcdShow: () => {},
     servoBus: () => ({ problem: 'no servo in this test' }),
     servoShow: () => {},
+    escBus: () => ({ partIds: [] }),
+    escShow: () => {},
   };
   const rt = new ScriptRuntime(parse(src), io, 'b');
   for (let t = 0; t < ms; t += 10) rt.tick(10);

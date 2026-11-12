@@ -57,8 +57,9 @@ export function Inspector() {
       </h3>
       {defs.length === 0 && gpios.length === 0 && <p className="hint">No adjustable values.</p>}
       {part.type === 'esc' && (
-        <p className="hint">Connector model only: ESC switching, BEC output, and brushless motor commutation are not simulated.</p>
+        <p className="hint">Connect BAT+/- to a 6-25.2 V battery, SIG to an ESP32 pin, and GND to ESP32 GND. Hold Servo.write(0) for 1 second to arm, then use 0-180 for throttle. The red lead provides a simulated 5 V BEC.</p>
       )}
+      {part.type === 'brushless-motor' && <p className="hint">Connect A/B/C to the ESC's three motor outputs. Rotor speed follows the ESC throttle; phase current is not modeled.</p>}
       {defs.map((d) => {
         const value = part.params?.[d.key] ?? d.default;
         return (

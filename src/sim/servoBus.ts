@@ -10,7 +10,11 @@ export function findServos(parts: Part[], sim: SimResult, boardId: string, pin: 
   const board = parts.find((p) => p.id === boardId);
   if (!board || !isBoardType(board.type)) return { problem: 'No ESP32 board to drive the servo.' };
   const servos = parts.filter((p) => p.type === 'servo');
-  if (servos.length === 0) return { problem: 'Servo not found: add a Servo part to the circuit.' };
+  if (servos.length === 0) {
+    return parts.some((p) => p.type === 'esc')
+      ? { partIds: [] }
+      : { problem: 'Servo not found: add a Servo part to the circuit.' };
+  }
 
   const net = (partId: string, name: string) => sim.nets.netOf.get(pinKey({ partId, pin: name }));
   const pinNet = net(board.id, pin);

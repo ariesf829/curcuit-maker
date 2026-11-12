@@ -314,4 +314,54 @@ void loop() {
   };
 }
 
-export const EXAMPLES: Example[] = [blink(), noResistor(), button(), motor(), pot(), lcd(), servoSweep()];
+function brushlessEsc(): Example {
+  const b = builder();
+  const esp = b.add('esp', 'esp32-devkit-v1', 'ESP1', 180, 200, { usb: 0, wifi: 0 });
+  const battery = b.add('bat', 'battery', 'BAT1', 160, 440, { voltage: 11.1, rint: 0.1 });
+  const esc = b.add('esc', 'esc', 'ESC1', 430, 320);
+  const motor = b.add('blm', 'brushless-motor', 'BLM1', 740, 320);
+  b.wire(battery, '+', esc, 'BAT+', RED);
+  b.wire(battery, '-', esc, 'BAT-', BLACK);
+  b.wire(esc, '+5V', esp, 'VIN', RED);
+  b.wire(esc, 'GND', esp, 'GND', BLACK);
+  b.wire(esp, 'D18', esc, 'SIG', YELLOW);
+  b.wire(esc, 'M1', motor, 'A', RED);
+  b.wire(esc, 'M2', motor, 'B', YELLOW);
+  b.wire(esc, 'M3', motor, 'C', BLUE);
+  return {
+    id: 'brushless-esc',
+    title: '8 · Brushless ESC and motor',
+    summary: 'An ESP32 drives an ESC with Servo-style throttle pulses. Hold zero throttle to arm before increasing speed.',
+    steps: [
+      'Press Run. The ESC BEC powers the ESP32 and the sketch holds zero throttle for 1.5 seconds to arm safely.',
+      'The brushless motor rotor spins as the sketch sweeps the throttle. The ESC requires 6-25.2 V at its battery input.',
+      'The three phase pins and 5 V BEC are modeled, but individual phase currents and commutation are not.',
+    ],
+    parts: b.parts,
+    wires: b.wires,
+    source: `#include <ESP32Servo.h>
+
+Servo esc;
+
+void setup() {
+  Serial.begin(115200);
+  esc.attach(18);
+  esc.write(0);
+  delay(1500);
+}
+
+void loop() {
+  for (int throttle = 0; throttle <= 180; throttle += 10) {
+    esc.write(throttle);
+    delay(100);
+  }
+  for (int throttle = 180; throttle >= 0; throttle -= 10) {
+    esc.write(throttle);
+    delay(100);
+  }
+}
+`,
+  };
+}
+
+export const EXAMPLES: Example[] = [blink(), noResistor(), button(), motor(), pot(), lcd(), servoSweep(), brushlessEsc()];
