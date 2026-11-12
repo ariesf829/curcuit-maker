@@ -43,7 +43,7 @@ function PartView({ part }: { part: Part }) {
   }
 
   return (
-    <g transform={`translate(${part.x} ${part.y}) rotate(${part.rot * 90})`}>
+    <g data-part={part.id} transform={`translate(${part.x} ${part.y}) rotate(${part.rot * 90})`}>
       <rect
         className={`part-body${selected ? ' selected' : ''}`}
         x={def.body.x}
@@ -159,7 +159,7 @@ export function Canvas() {
 
   const onPointerDown = (e: RPointerEvent<SVGSVGElement>) => {
     const target = e.target as SVGElement;
-    const partId = target.getAttribute('data-part');
+    const partId = target.closest('[data-part]')?.getAttribute('data-part');
     const st = useCircuit.getState();
     svgRef.current!.setPointerCapture(e.pointerId);
     if (partId) {

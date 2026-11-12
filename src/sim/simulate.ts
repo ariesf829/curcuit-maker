@@ -35,6 +35,8 @@ const I2C_PULLUP_OHMS = 10000;
 const ESC_BEC_VOLTS = 5;
 const ESC_BEC_MIN_INPUT_VOLTS = 6;
 const ESC_BEC_MAX_INPUT_VOLTS = 25.2;
+const PIR_MIN_SUPPLY_VOLTS = 4.5;
+const PIR_MAX_SUPPLY_VOLTS = 20;
 
 const BUCK_OUT_OHMS = 0.05;
 const BUCK_GROUND_TIE_OHMS = 1e-3;
@@ -77,6 +79,8 @@ export interface SimResult {
   relays: Set<string>;
   /** ESCs with a valid 2S-6S supply and an active 5 V BEC output. */
   poweredEscs: Set<string>;
+  /** PIR sensors with a valid supply and an active output driver. */
+  poweredMotionSensors: Set<string>;
   /** Output voltage and input current of each buck converter. */
   bucks: Map<string, { vout: number; iin: number }>;
 }
@@ -91,6 +95,7 @@ interface State {
   powered: Set<string>;
   relays: Set<string>;
   poweredEscs: Set<string>;
+  poweredMotionSensors: Set<string>;
   bucks: Map<string, { vout: number; iin: number }>;
 }
 
@@ -243,6 +248,22 @@ function build(parts: Part[], nets: NetList, state: State, probe?: Probe): Build
       case 'servo':
         resistor(part, 'R', 'V+', 'GND', SERVO_REF_VOLTS / (param(part, 'runMa') / 1000), 'motor and electronics');
         break;
+      case 'motion-sensor':
+        resistor(part, 'SUPPLY', 'VCC', 'GND', 5 / (param(part, 'ma') / 1000), 'sensor supply');
+        if (state.poweredMotionSensors.has(part.id)) {
+          add(part, 'OUT', 'motion output', 'internal', 'OUT', 'GND', (a, b, id) => ({
+            kind: 'V',
+            id,
+            a,
+            b,
+            v: param(part, 'motion') ? 3.3 : 0,
+            r: 100,
+          }));
+        }
+        break;
+      case 'solenoid-lock':
+        resistor(part, 'COIL', 'COIL+', 'COIL-', param(part, 'ohms'), 'coil');
+        break;
       case 'esc':
         resistor(part, 'GND', 'BAT-', 'GND', BUCK_GROUND_TIE_OHMS, 'battery/receiver ground');
         if (state.poweredEscs.has(part.id)) {
@@ -305,6 +326,7 @@ function nextState(parts: Part[], nets: NetList, sol: SolveResult, state: State)
 
   const relays = new Set<string>();
   const poweredEscs = new Set<string>();
+  const poweredMotionSensors = new Set<string>();
   const bucks = new Map<string, { vout: number; iin: number }>();
   for (const part of parts) {
     if (part.type === 'relay') {
@@ -314,6 +336,9 @@ function nextState(parts: Part[], nets: NetList, sol: SolveResult, state: State)
     } else if (part.type === 'esc') {
       const vin = volts(part, 'BAT+') - volts(part, 'BAT-');
       if (vin >= ESC_BEC_MIN_INPUT_VOLTS && vin <= ESC_BEC_MAX_INPUT_VOLTS) poweredEscs.add(part.id);
+    } else if (part.type === 'motion-sensor') {
+      const vin = volts(part, 'VCC') - volts(part, 'GND');
+      if (vin >= PIR_MIN_SUPPLY_VOLTS && vin <= PIR_MAX_SUPPLY_VOLTS) poweredMotionSensors.add(part.id);
     } else if (part.type === 'buck') {
       const old = state.bucks.get(part.id) ?? { vout: param(part, 'vout'), iin: 0 };
       const vin = volts(part, 'IN+') - volts(part, 'IN-');
@@ -328,12 +353,12 @@ function nextState(parts: Part[], nets: NetList, sol: SolveResult, state: State)
       bucks.set(part.id, { vout: (old.vout + vout) / 2, iin: (old.iin + iin) / 2 });
     }
   }
-  return { powered, relays, poweredEscs, bucks };
+  return { powered, relays, poweredEscs, poweredMotionSensors, bucks };
 }
 
 function sameState(a: State, b: State): boolean {
   const same = (x: Set<string>, y: Set<string>) => x.size === y.size && [...x].every((k) => y.has(k));
-  if (!same(a.powered, b.powered) || !same(a.relays, b.relays) || !same(a.poweredEscs, b.poweredEscs)) return false;
+  if (!same(a.powered, b.powered) || !same(a.relays, b.relays) || !same(a.poweredEscs, b.poweredEscs) || !same(a.poweredMotionSensors, b.poweredMotionSensors)) return false;
   for (const [id, now] of b.bucks) {
     const before = a.bucks.get(id);
     if (!before || Math.abs(before.vout - now.vout) > BUCK_VOUT_TOLERANCE || Math.abs(before.iin - now.iin) > BUCK_IIN_TOLERANCE) return false;
@@ -343,7 +368,7 @@ function sameState(a: State, b: State): boolean {
 
 export function simulate(parts: Part[], wires: Wire[], probe?: Probe): SimResult {
   const nets = buildNets(parts, wires);
-  let state: State = { powered: new Set(), relays: new Set(), poweredEscs: new Set(), bucks: new Map() };
+  let state: State = { powered: new Set(), relays: new Set(), poweredEscs: new Set(), poweredMotionSensors: new Set(), bucks: new Map() };
   let b!: Build;
   let sol!: SolveResult;
   let settled = false;
@@ -388,6 +413,7 @@ export function simulate(parts: Part[], wires: Wire[], probe?: Probe): SimResult
     poweredBoards: new Set([...state.powered, ...usbBoards]),
     relays: state.relays,
     poweredEscs: state.poweredEscs,
+    poweredMotionSensors: state.poweredMotionSensors,
     bucks: state.bucks,
   };
 }

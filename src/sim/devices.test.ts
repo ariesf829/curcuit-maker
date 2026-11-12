@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { EXAMPLES } from '../examples';
 import type { PartType } from '../model/parts';
 import type { Part, Wire } from '../model/types';
+import { checkCircuit } from './checks';
 import { pinVoltage, simulate } from './simulate';
 
 let n = 0;
@@ -187,6 +189,97 @@ describe('loads and instruments', () => {
     const servo = mk('servo', { runMa: 250 });
     const sim = simulate([bat, servo], [wire(bat, '+', servo, 'V+'), wire(bat, '-', servo, 'GND')]);
     expect(find(sim, servo, 'motor and electronics').current).toBeCloseTo(0.25, 2);
+  });
+
+  describe('PIR motion sensor', () => {
+    function circuit(motion: number, supplyVoltage = 5) {
+      const battery = mk('battery', { voltage: supplyVoltage, rint: 0.01 });
+      const sensor = mk('motion-sensor', { motion });
+      const wires = [wire(battery, '+', sensor, 'VCC'), wire(battery, '-', sensor, 'GND')];
+      return { sensor, sim: simulate([battery, sensor], wires) };
+    }
+
+    it('drives OUT low or 3.3 V according to the interactive motion state', () => {
+      const clear = circuit(0);
+      expect(clear.sim.poweredMotionSensors.has(clear.sensor.id)).toBe(true);
+      expect(pinVoltage(clear.sim, clear.sensor.id, 'OUT')).toBeCloseTo(0, 2);
+      expect(find(clear.sim, clear.sensor, 'sensor supply').current).toBeCloseTo(0.05, 2);
+
+      const detected = circuit(1);
+      expect(pinVoltage(detected.sim, detected.sensor.id, 'OUT')).toBeCloseTo(3.3, 1);
+    });
+
+    it('disables the output below its 4.5 V minimum supply', () => {
+      const { sensor, sim } = circuit(1, 3.3);
+      expect(sim.poweredMotionSensors.has(sensor.id)).toBe(false);
+      expect(pinVoltage(sim, sensor.id, 'OUT')).toBeCloseTo(0, 2);
+      expect(checkCircuit([sensor], sim).some((issue) => issue.id === `pir-low:${sensor.id}`)).toBe(true);
+    });
+
+    it('draws no sensor current when it is not connected to a supply', () => {
+      const sensor = mk('motion-sensor', { motion: 1 });
+      const sim = simulate([sensor], []);
+      expect(sim.poweredMotionSensors.has(sensor.id)).toBe(false);
+      expect(find(sim, sensor, 'sensor supply').current).toBeCloseTo(0, 6);
+    });
+  });
+
+  describe('solenoid lock', () => {
+    it('models a 12 V coil load and reports overvoltage', () => {
+      const battery = mk('battery', { voltage: 24, rint: 0.01 });
+      const lock = mk('solenoid-lock', { voltage: 12, ohms: 30, normallyOpen: 0 });
+      const sim = simulate([battery, lock], [wire(battery, '+', lock, 'COIL+'), wire(battery, '-', lock, 'COIL-')]);
+      expect(find(sim, lock, 'coil').current).toBeCloseTo(0.8, 1);
+      expect(checkCircuit([battery, lock], sim).some((issue) => issue.id === `solenoid-over:${lock.id}`)).toBe(true);
+      expect(checkCircuit([battery, lock], sim).some((issue) => issue.id === `flyback:${lock.id}`)).toBe(true);
+    });
+
+    it('can be switched safely by an ESP32 through an N-MOSFET and flyback diode', () => {
+      const run = (gpio: 'high' | 'low') => {
+        const board = { ...mk('esp32-devkit-v1', { usb: 1 }), pinModes: { D18: gpio } };
+        const battery = mk('battery', { voltage: 12, rint: 0.01 });
+        const lock = mk('solenoid-lock', { voltage: 12, ohms: 30 });
+        const mosfet = mk('nmos');
+        const diode = mk('diode');
+        const wires = [
+          wire(battery, '+', lock, 'COIL+'),
+          wire(lock, 'COIL-', mosfet, 'D'),
+          wire(mosfet, 'S', battery, '-'),
+          wire(board, 'GND', battery, '-'),
+          wire(board, 'D18', mosfet, 'G'),
+          wire(diode, 'K', lock, 'COIL+'),
+          wire(diode, 'A', lock, 'COIL-'),
+        ];
+        return { lock, sim: simulate([board, battery, lock, mosfet, diode], wires) };
+      };
+
+      const on = run('high');
+      expect(Math.abs(find(on.sim, on.lock, 'coil').current)).toBeGreaterThan(0.35);
+      const off = run('low');
+      expect(Math.abs(find(off.sim, off.lock, 'coil').current)).toBeLessThan(1e-6);
+    });
+
+    it('the PIR lock example drives the solenoid only while motion is detected', () => {
+      const example = EXAMPLES.find((entry) => entry.id === 'pir-solenoid-lock')!;
+      const run = (motion: 0 | 1) => {
+        const parts = example.parts.map((part) => {
+          if (part.id === 'pir') return { ...part, params: { ...part.params, motion } };
+          if (part.id === 'esp') return { ...part, pinModes: { D18: motion ? 'high' as const : 'low' as const } };
+          return part;
+        });
+        return { parts, sim: simulate(parts, example.wires) };
+      };
+
+      const clear = run(0);
+      const detected = run(1);
+      expect(pinVoltage(clear.sim, 'esp', 'D4')).toBeCloseTo(0, 2);
+      expect(pinVoltage(detected.sim, 'esp', 'D4')).toBeCloseTo(3.3, 1);
+      expect(Math.abs(find(clear.sim, clear.parts.find((part) => part.id === 'sol')!, 'coil').current)).toBeLessThan(1e-6);
+      expect(Math.abs(find(detected.sim, detected.parts.find((part) => part.id === 'sol')!, 'coil').current)).toBeGreaterThan(0.35);
+      const issues = checkCircuit(detected.parts, detected.sim);
+      expect(issues.some((issue) => issue.id === 'flyback:sol')).toBe(false);
+      expect(issues.some((issue) => issue.id === 'mos-weak:mos')).toBe(false);
+    });
   });
 
   it('sensor pull-ups pull SDA up to the supply', () => {

@@ -65,6 +65,16 @@ describe('buildNets', () => {
     expect(sameNet(n, 'bat:+', 'gnd:5V')).toBe(false);
   });
 
+  it('keeps new motion sensor and solenoid terminals separate when added on a breadboard row', () => {
+    const board = part('test-bb', 'breadboard', 160, 160);
+    const pir = part('pir', 'motion-sensor', 280, 200);
+    const solenoid = part('sol', 'solenoid-lock', 400, 200);
+    const nets = buildNets([board, pir, solenoid], []);
+    expect(sameNet(nets, 'pir:VCC', 'pir:OUT')).toBe(false);
+    expect(sameNet(nets, 'pir:OUT', 'pir:GND')).toBe(false);
+    expect(sameNet(nets, 'sol:COIL+', 'sol:COIL-')).toBe(false);
+  });
+
   it('joins pins through wires', () => {
     const r = part('r', 'resistor', 0, 0);
     const bat = part('bat', 'battery', 0, 200);

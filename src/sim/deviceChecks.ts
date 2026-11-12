@@ -30,7 +30,7 @@ const I2C_MAX_SAFE_VOLTS = 3.6;
 const LCD_MIN_VOLTS = 4.5;
 const LCD_MAX_VOLTS = 5.5;
 
-/** Checks for the transistor, relay, servo, converter, sensor and meter models. */
+/** Checks for the transistor, relay, servo, converter, sensor, solenoid and meter models. */
 export function checkDevices(parts: Part[], sim: SimResult): Issue[] {
   const issues: Issue[] = [];
   const push = (i: Issue) => issues.push(i);
@@ -98,6 +98,7 @@ export function checkDevices(parts: Part[], sim: SimResult): Issue[] {
         const id = Math.abs(ds.current);
         const vgs = volts(part, 'G') - volts(part, 'S');
         const vth = param(part, 'vth');
+        const fullyOnVgs = param(part, 'logicLevel') === 1 ? 3.0 : MOS_FULLY_ON_VGS;
         const power = Math.abs(ds.current * ds.voltage);
         const base = { partIds: [part.id], nets: [ds.netA, ds.netB] };
         if (id > param(part, 'maxA')) {
@@ -135,14 +136,14 @@ export function checkDevices(parts: Part[], sim: SimResult): Issue[] {
             title: `${part.name}: needs a heatsink`,
             detail: `It dissipates ${power.toFixed(2)} W. Without a heatsink a TO-220 MOSFET handles about ${MOS_MAX_WATTS} W. Drive the gate harder or choose a lower-resistance part.`,
           });
-        } else if (vgs < MOS_FULLY_ON_VGS && id > MOS_ON_CURRENT_AMPS && vgs > vth - 0.5) {
+        } else if (vgs < fullyOnVgs && id > MOS_ON_CURRENT_AMPS && vgs > vth - 0.5) {
           const effective = Math.abs(ds.voltage / ds.current);
           push({
             ...base,
             id: `mos-weak:${part.id}`,
             severity: 'warning',
             title: `${part.name}: not fully turned on`,
-            detail: `The gate is only ${vgs.toFixed(1)} V above the source, so the channel measures about ${effective.toFixed(2)} Ω and wastes ${(power * 1000).toFixed(0)} mW.`,
+            detail: `The gate is only ${vgs.toFixed(1)} V above the source, below the ${fullyOnVgs.toFixed(1)} V ${param(part, 'logicLevel') === 1 ? 'logic-level target' : 'fully-on target'}, so the channel measures about ${effective.toFixed(2)} Ω and wastes ${(power * 1000).toFixed(0)} mW.`,
             fix: { kind: 'mosfet-gate', vth },
           });
         }
@@ -228,6 +229,58 @@ export function checkDevices(parts: Part[], sim: SimResult): Issue[] {
             fix: { kind: 'bulk-cap', amps, volts: v },
           });
         }
+        break;
+      }
+
+      case 'motion-sensor': {
+        const supply = el(part, 'sensor supply');
+        if (!supply) break;
+        const vcc = supply.voltage;
+        const base = { partIds: [part.id], nets: [supply.netA, supply.netB] };
+        if (vcc > 0 && vcc < 4.5) {
+          push({
+            ...base,
+            id: `pir-low:${part.id}`,
+            severity: 'warning',
+            title: `${part.name}: supply voltage too low`,
+            detail: `${vcc.toFixed(1)} V is below the HC-SR501's 4.5 V minimum; its motion output is disabled.`,
+          });
+        } else if (vcc > 20) {
+          push({
+            ...base,
+            id: `pir-over:${part.id}`,
+            severity: 'error',
+            title: `${part.name}: supply voltage too high`,
+            detail: `${vcc.toFixed(1)} V exceeds the HC-SR501's 20 V maximum.`,
+          });
+        }
+        break;
+      }
+
+      case 'solenoid-lock': {
+        const coil = el(part, 'coil');
+        if (!coil) break;
+        const ratedVoltage = param(part, 'voltage');
+        const voltage = Math.abs(coil.voltage);
+        const base = { partIds: [part.id], nets: [coil.netA, coil.netB] };
+        if (voltage > ratedVoltage * 1.2) {
+          push({
+            ...base,
+            id: `solenoid-over:${part.id}`,
+            severity: 'error',
+            title: `${part.name}: coil voltage too high`,
+            detail: `${voltage.toFixed(1)} V exceeds the ${ratedVoltage} V solenoid's safe operating range.`,
+          });
+        } else if (voltage > MIN_ACTIVE_VOLTS && voltage < ratedVoltage * 0.75) {
+          push({
+            ...base,
+            id: `solenoid-low:${part.id}`,
+            severity: 'warning',
+            title: `${part.name}: coil voltage too low`,
+            detail: `${voltage.toFixed(1)} V is too low to reliably operate this ${ratedVoltage} V solenoid lock.`,
+          });
+        }
+        flyback(part, coil, `${part.name} coil`);
         break;
       }
 

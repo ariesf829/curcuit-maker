@@ -364,4 +364,61 @@ void loop() {
   };
 }
 
-export const EXAMPLES: Example[] = [blink(), noResistor(), button(), motor(), pot(), lcd(), servoSweep(), brushlessEsc()];
+function pirSolenoidLock(): Example {
+  const b = builder();
+  const esp = b.add('esp', 'esp32-devkit-v1', 'ESP1', 180, 180);
+  const battery = b.add('bat', 'battery', 'BAT1', 180, 440, { voltage: 12, rint: 0.1 });
+  const pir = b.add('pir', 'motion-sensor', 'PIR1', 460, 180);
+  const mosfet = b.add('mos', 'nmos', 'Q1', 650, 400, { vth: 2, rds: 0.05, maxA: 10, logicLevel: 1 });
+  const lock = b.add('sol', 'solenoid-lock', 'SOL1', 880, 300, { voltage: 12, ohms: 30, normallyOpen: 0 });
+  const diode = b.add('d1', 'diode', 'D1', 1040, 420);
+
+  b.wire(esp, 'VIN', pir, 'VCC', RED);
+  b.wire(esp, 'GND', pir, 'GND', BLACK);
+  b.wire(pir, 'OUT', esp, 'D4', YELLOW);
+  b.wire(battery, '+', lock, 'COIL+', RED);
+  b.wire(lock, 'COIL-', mosfet, 'D', BLUE);
+  b.wire(mosfet, 'S', battery, '-', BLACK);
+  b.wire(esp, 'GND', battery, '-', BLACK);
+  b.wire(esp, 'D18', mosfet, 'G', YELLOW);
+  b.wire(diode, 'K', lock, 'COIL+', RED);
+  b.wire(diode, 'A', lock, 'COIL-', BLACK);
+
+  return {
+    id: 'pir-solenoid-lock',
+    title: '9 · PIR-controlled solenoid lock',
+    summary: 'A PIR sensor tells the ESP32 to switch a 12 V solenoid through a MOSFET. The external supply shares ground with the ESP32.',
+    steps: [
+      'Press Run. The sketch reads the PIR OUT pin and drives the solenoid MOSFET gate from ESP32 GPIO 18.',
+      'Click the PIR lens to simulate motion. The normally-closed lock unlocks while the solenoid coil is energized.',
+      'The 12 V battery powers only the solenoid; the ESP32 USB supply powers the PIR. Grounds are joined.',
+      'The MOSFET protects the ESP32 GPIO from the coil current. D1 is the flyback diode: cathode to COIL+, anode to COIL−.',
+      'Q1 is configured as a logic-level N-MOSFET so its 3.3 V gate drive is suitable. In a real circuit, verify the MOSFET is specified at 3.3 V gate drive and rated for the solenoid current and voltage.',
+    ],
+    parts: b.parts,
+    wires: b.wires,
+    source: `const int PIR_PIN = 4;
+const int LOCK_PIN = 18;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIR_PIN, INPUT);
+  pinMode(LOCK_PIN, OUTPUT);
+  digitalWrite(LOCK_PIN, LOW);
+}
+
+void loop() {
+  if (digitalRead(PIR_PIN) == HIGH) {
+    digitalWrite(LOCK_PIN, HIGH);
+    Serial.println("Motion detected - unlock");
+  } else {
+    digitalWrite(LOCK_PIN, LOW);
+    Serial.println("No motion - lock");
+  }
+  delay(100);
+}
+`,
+  };
+}
+
+export const EXAMPLES: Example[] = [blink(), noResistor(), button(), motor(), pot(), lcd(), servoSweep(), brushlessEsc(), pirSolenoidLock()];

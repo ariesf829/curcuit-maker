@@ -47,6 +47,7 @@ export const PARAMS: Partial<Record<PartType, ParamDef[]>> = {
     { key: 'vth', label: 'Gate threshold', unit: 'V', default: 2, min: 0.5, max: 5 },
     { key: 'rds', label: 'On-resistance @4.5 V', unit: 'Ω', default: 0.05, min: 0.001 },
     { key: 'maxA', label: 'Max drain current', unit: 'A', default: 10, min: 0.01 },
+    { key: 'logicLevel', label: 'Logic-level (fully on at 3.3 V)', unit: '', default: 0, bool: true },
   ],
   relay: [
     { key: 'coilV', label: 'Coil voltage', unit: 'V', default: 5, min: 1 },
@@ -54,6 +55,15 @@ export const PARAMS: Partial<Record<PartType, ParamDef[]>> = {
     { key: 'contactA', label: 'Contact rating', unit: 'A', default: 10, min: 0.1 },
   ],
   servo: [{ key: 'runMa', label: 'Running current @5 V', unit: 'mA', default: 250, min: 10 }],
+  'motion-sensor': [
+    { key: 'motion', label: 'Motion detected', unit: '', default: 0, bool: true },
+    { key: 'ma', label: 'Supply current', unit: 'mA', default: 50, min: 1, max: 100 },
+  ],
+  'solenoid-lock': [
+    { key: 'voltage', label: 'Rated coil voltage', unit: 'V', default: 12, min: 1, max: 24 },
+    { key: 'ohms', label: 'Coil resistance', unit: 'Ω', default: 30, min: 1 },
+    { key: 'normallyOpen', label: 'Normally open (locks when energized)', unit: '', default: 0, bool: true },
+  ],
   buck: [
     { key: 'vout', label: 'Output voltage', unit: 'V', default: 5, min: 1.25, max: 35 },
     { key: 'ratedA', label: 'Max output current', unit: 'A', default: 2, min: 0.1 },

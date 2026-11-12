@@ -20,7 +20,9 @@ export function Palette() {
               className="palette-item"
               draggable
               onDragStart={(e) => e.dataTransfer.setData(DRAG_MIME, d.type satisfies PartType)}
-              onDoubleClick={() => addPart(d.type, 240 + Math.random() * 80, 80 + Math.random() * 40)}
+              onDoubleClick={() =>
+                addPart(d.type, 240 + Math.random() * 80, d.type === 'motion-sensor' || d.type === 'solenoid-lock' ? 200 : 80 + Math.random() * 40)
+              }
             >
               <span className="swatch" style={{ background: d.color }} />
               {d.label}

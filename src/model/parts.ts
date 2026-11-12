@@ -24,6 +24,8 @@ export type PartType =
   | 'servo'
   | 'esc'
   | 'brushless-motor'
+  | 'motion-sensor'
+  | 'solenoid-lock'
   | 'i2c-sensor'
   | 'lcd1602'
   | 'multimeter';
@@ -145,6 +147,8 @@ const defs: PartDef[] = [
   { type: 'servo', label: 'Servo', prefix: 'SRV', category: 'Loads & Switching', pins: [p('GND', 0, 0), p('V+', 20, 0), p('SIG', 40, 0)], body: { x: -8, y: -44, w: 56, h: 38 }, color: '#3a6ea5' },
   { type: 'esc', label: 'Brushless ESC', prefix: 'ESC', category: 'Loads & Switching', pins: [p('BAT+', -150, -20), p('BAT-', -150, 20), p('M1', 120, -26), p('M2', 120, 0), p('M3', 120, 26), p('+5V', -30, 84), p('SIG', 0, 84), p('GND', 30, 84)], body: { x: -70, y: -44, w: 140, h: 88 }, color: '#252a32' },
   { type: 'brushless-motor', label: 'Brushless Motor', prefix: 'BLM', category: 'Loads & Switching', pins: [p('A', -20, 0), p('B', 0, 0), p('C', 20, 0)], body: { x: -38, y: -72, w: 76, h: 64 }, color: '#737b86' },
+  { type: 'motion-sensor', label: 'PIR Motion Sensor (HC-SR501)', prefix: 'PIR', category: 'Sensors & Tools', pins: [p('VCC', -20, 0), p('OUT', 0, 0), p('GND', 20, 0)], body: { x: -34, y: -60, w: 68, h: 52 }, color: '#31765e' },
+  { type: 'solenoid-lock', label: 'Solenoid Lock', prefix: 'SOL', category: 'Loads & Switching', pins: [p('COIL+', 0, 0), p('COIL-', 40, 0)], body: { x: -18, y: -58, w: 76, h: 50 }, color: '#8b9098' },
   { type: 'battery', label: 'Battery', prefix: 'BAT', category: 'Power', pins: [p('+', 0, 0), p('-', 40, 0)], body: { x: -8, y: -36, w: 56, h: 30 }, color: '#c98a2b' },
   { type: 'usb5v', label: 'USB 5V', prefix: 'USB', category: 'Power', pins: [p('5V', 0, 0), p('GND', 20, 0)], body: { x: -8, y: -32, w: 36, h: 26 }, color: '#9aa4ad' },
   { type: 'buck', label: 'DC-DC Adjustable Buck Converter', prefix: 'BUCK', category: 'Power', pins: [p('IN+', 0, 0), p('IN-', 0, 20), p('OUT+', 80, 0), p('OUT-', 80, 20)], body: { x: 6, y: -10, w: 68, h: 40 }, color: '#1f6fb2' },

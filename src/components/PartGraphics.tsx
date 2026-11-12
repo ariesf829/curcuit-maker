@@ -10,7 +10,7 @@ import { useEsc } from '../state/escStore';
 import { findMotorEsc } from '../sim/escBus';
 
 /** Parts that have a drawn picture instead of a plain rectangle. */
-export const HAS_GRAPHIC = new Set<Part['type']>(['led', 'motor', 'relay', 'potentiometer', 'button', 'switch', 'lcd1602', 'servo', 'esc', 'brushless-motor']);
+export const HAS_GRAPHIC = new Set<Part['type']>(['led', 'motor', 'relay', 'potentiometer', 'button', 'switch', 'lcd1602', 'servo', 'esc', 'brushless-motor', 'motion-sensor', 'solenoid-lock']);
 
 const POT_SWEEP_DEG = 270;
 const POT_DRAG_PX = 160;
@@ -102,6 +102,61 @@ function ToggleSwitch({ part }: { part: Part }) {
       <text x={20} y={26} textAnchor="middle" className="part-readout" pointerEvents="none">
         {closed ? 'ON' : 'OFF'}
       </text>
+    </g>
+  );
+}
+
+function MotionSensor({ part, sim }: { part: Part; sim: SimResult }) {
+  const motion = (part.params?.motion ?? 0) === 1;
+  const powered = sim.poweredMotionSensors.has(part.id);
+  const toggleIfClicked = (e: ReactPointerEvent) => {
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let moved = false;
+    trackPointer(
+      (move) => {
+        if (Math.hypot(move.clientX - startX, move.clientY - startY) > 4) moved = true;
+      },
+      () => {
+        if (!moved) useCircuit.getState().setParam(part.id, 'motion', motion ? 0 : 1);
+      },
+    );
+  };
+  return (
+    <g>
+      <rect x={-34} y={-60} width={68} height={52} rx={6} fill="#236347" stroke="#142b20" strokeWidth={2} pointerEvents="none" />
+      <path d="M -27 -50 Q 0 -62 27 -50 L 23 -23 Q 0 -15 -23 -23 Z" fill="#d9e8e2" stroke="#8eb8a4" strokeWidth={1.5} onPointerDown={toggleIfClicked} style={{ cursor: 'pointer' }}>
+        <title>{motion ? 'Motion detected (click to clear)' : 'No motion (click to detect motion)'}</title>
+      </path>
+      <path d="M -17 -42 Q 0 -50 17 -42 M -15 -35 Q 0 -41 15 -35" fill="none" stroke="#a9cec0" strokeWidth={1.5} pointerEvents="none" />
+      <circle cx={0} cy={-30} r={8} fill={powered && motion ? '#ffb547' : '#f1f3f5'} stroke="#a7b0b8" onPointerDown={toggleIfClicked} style={{ cursor: 'pointer' }}>
+        <title>{motion ? 'Motion detected (click to clear)' : 'No motion (click to detect motion)'}</title>
+      </circle>
+      <text x={0} y={-14} textAnchor="middle" fontSize={6} fill="#e5f1eb" pointerEvents="none">HC-SR501</text>
+      <text x={0} y={-2} textAnchor="middle" className="part-readout" fill={powered && motion ? '#ffbd5a' : undefined}>
+        {!powered ? 'NO POWER' : motion ? 'MOTION' : 'CLEAR'}
+      </text>
+    </g>
+  );
+}
+
+function SolenoidLock({ part, sim }: { part: Part; sim: SimResult }) {
+  const coil = sim.elements.find((e) => e.partId === part.id && e.label === 'coil');
+  const ratedVoltage = part.params?.voltage ?? 12;
+  const energized = Math.abs(coil?.voltage ?? 0) >= ratedVoltage * 0.75;
+  const normallyOpen = (part.params?.normallyOpen ?? 0) === 1;
+  const locked = energized === normallyOpen;
+  return (
+    <g pointerEvents="none">
+      <path d="M -18 -14 H 58 V -8 H -18 Z" fill="#b5bbc4" stroke="#666d77" />
+      <rect x={-12} y={-58} width={68} height={38} rx={5} fill="#6d737d" stroke="#353a43" strokeWidth={2} />
+      <rect x={-6} y={-52} width={20} height={26} rx={3} fill="#d6a440" stroke="#71511e" />
+      <path d="M -2 -47 V -31 M 4 -47 V -31 M 10 -47 V -31" stroke="#795a25" strokeWidth={2} />
+      <rect x={energized ? 28 : 18} y={-48} width={8} height={34} rx={2} fill="#c6cbd2" stroke="#59616d" />
+      <path d={energized ? 'M 32 -14 V -8' : 'M 22 -14 V -8'} stroke="#d7dbe2" strokeWidth={3} />
+      <text x={20} y={-38} textAnchor="middle" fontSize={6} fill="#f2f4f8">SOLENOID</text>
+      <text x={20} y={-27} textAnchor="middle" fontSize={6} fill="#f2f4f8">{normallyOpen ? 'N.O.' : 'N.C.'}</text>
+      <text x={20} y={6} textAnchor="middle" className="part-readout">{!coil ? 'NO POWER' : locked ? 'LOCKED' : 'UNLOCKED'}</text>
     </g>
   );
 }
@@ -390,6 +445,10 @@ export function PartGraphic({ part, sim }: { part: Part; sim: SimResult }) {
       return <Esc part={part} />;
     case 'brushless-motor':
       return <BrushlessMotor part={part} sim={sim} />;
+    case 'motion-sensor':
+      return <MotionSensor part={part} sim={sim} />;
+    case 'solenoid-lock':
+      return <SolenoidLock part={part} sim={sim} />;
     case 'servo':
       return <Servo part={part} />;
     case 'lcd1602':

@@ -61,6 +61,8 @@ export function Inspector() {
       )}
       {part.type === 'brushless-motor' && <p className="hint">Connect A/B/C to the ESC's three motor outputs. Rotor speed follows the ESC throttle; phase current is not modeled.</p>}
       {part.type === 'buck' && <p className="hint">Input range: 3.2–35 V. Adjustable output: 1.25–35 V, with at least 1 V input headroom required to regulate.</p>}
+      {part.type === 'motion-sensor' && <p className="hint">HC-SR501 PIR: power VCC from 4.5–20 V, connect GND, and read OUT (3.3 V when motion is detected). Click the sensor lens on the canvas to toggle motion.</p>}
+      {part.type === 'solenoid-lock' && <p className="hint">Yes—control it from ESP32 through a logic-level N-MOSFET; never connect the coil directly to a GPIO. Wire an external supply + to COIL+, COIL− to MOSFET D, MOSFET S to supply −, and ESP32 GPIO to MOSFET G. Join ESP32 GND to supply −. Add a flyback diode (rated for coil current) across the coil, cathode to COIL+. Normally closed unlocks when energized; normally open locks when energized.</p>}
       {defs.map((d) => {
         const value = part.params?.[d.key] ?? d.default;
         return (
