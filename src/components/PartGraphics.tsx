@@ -8,7 +8,7 @@ import { useLcd } from '../state/lcdStore';
 import { useServo } from '../state/servoStore';
 
 /** Parts that have a drawn picture instead of a plain rectangle. */
-export const HAS_GRAPHIC = new Set<Part['type']>(['led', 'motor', 'relay', 'potentiometer', 'button', 'switch', 'lcd1602', 'servo']);
+export const HAS_GRAPHIC = new Set<Part['type']>(['led', 'motor', 'relay', 'potentiometer', 'button', 'switch', 'lcd1602', 'servo', 'esc']);
 
 const POT_SWEEP_DEG = 270;
 const POT_DRAG_PX = 160;
@@ -288,8 +288,53 @@ function Servo({ part }: { part: Part }) {
   );
 }
 
+function Esc() {
+  const motorPhases = [
+    { y: -26, color: '#e78b32' },
+    { y: 0, color: '#e3c33d' },
+    { y: 26, color: '#4387c6' },
+  ];
+  return (
+    <g pointerEvents="none">
+      <path d="M -70 -20 H -150" stroke="#dc3e3e" strokeWidth={5} fill="none" />
+      <path d="M -70 20 H -150" stroke="#20242a" strokeWidth={5} fill="none" />
+      <rect x={-166} y={-35} width={30} height={70} rx={5} fill="#e2a62d" stroke="#9b6718" strokeWidth={2} />
+      <circle cx={-150} cy={-20} r={5} fill="#a96c16" stroke="#f6ce68" strokeWidth={2} />
+      <circle cx={-150} cy={20} r={5} fill="#a96c16" stroke="#f6ce68" strokeWidth={2} />
+
+      <path d="M 70 -26 H 120" stroke="#e78b32" strokeWidth={4} fill="none" />
+      <path d="M 70 0 H 120" stroke="#e3c33d" strokeWidth={4} fill="none" />
+      <path d="M 70 26 H 120" stroke="#4387c6" strokeWidth={4} fill="none" />
+      {motorPhases.map(({ y, color }) => (
+        <g key={y}>
+          <rect x={106} y={y - 6} width={18} height={12} rx={4} fill="#c6cbd2" stroke="#747b85" />
+          <circle cx={120} cy={y} r={3} fill={color} stroke="#343a43" />
+        </g>
+      ))}
+
+      <path d="M -30 44 V 84" stroke="#d83c3c" strokeWidth={3} fill="none" />
+      <path d="M 0 44 V 84" stroke="#f1f1ed" strokeWidth={3} fill="none" />
+      <path d="M 30 44 V 84" stroke="#252a32" strokeWidth={3} fill="none" />
+      <rect x={-36} y={76} width={72} height={16} rx={3} fill="#353a43" stroke="#16191e" />
+      <rect x={-31} y={78} width={62} height={12} rx={2} fill="#252a32" />
+      <circle cx={-30} cy={84} r={3} fill="#d83c3c" stroke="#f2a0a0" />
+      <circle cx={0} cy={84} r={3} fill="#f1f1ed" stroke="#858991" />
+      <circle cx={30} cy={84} r={3} fill="#252a32" stroke="#858991" />
+
+      <rect x={-70} y={-44} width={140} height={88} rx={8} fill="#252a32" stroke="#11151a" strokeWidth={2} />
+      <rect x={-62} y={-36} width={124} height={72} rx={5} fill="#343a44" stroke="#555d69" />
+      <path d="M -42 -30 V -21 M -28 -30 V -21 M -14 -30 V -21 M 0 -30 V -21 M 14 -30 V -21 M 28 -30 V -21 M 42 -30 V -21" stroke="#969da8" strokeWidth={3} />
+      <text x={0} y={-5} textAnchor="middle" fontSize={10} fontWeight={700} fill="#f2f4f8">BRUSHLESS ESC</text>
+      <text x={0} y={11} textAnchor="middle" fontSize={7} fill="#bac3d1">3-PHASE SPEED CONTROLLER</text>
+      <text x={0} y={25} textAnchor="middle" fontSize={7} fill="#bac3d1">XT60 · 3.5 mm BULLETS</text>
+    </g>
+  );
+}
+
 export function PartGraphic({ part, sim }: { part: Part; sim: SimResult }) {
   switch (part.type) {
+    case 'esc':
+      return <Esc />;
     case 'servo':
       return <Servo part={part} />;
     case 'lcd1602':

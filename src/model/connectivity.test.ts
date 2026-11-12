@@ -23,6 +23,19 @@ describe('part definitions', () => {
       expect(new Set(names).size, def.type).toBe(names.length);
     }
   });
+
+  it('provides the usual ESC battery, motor, and receiver connections', () => {
+    expect(PART_LIST.find((def) => def.type === 'esc')?.pins.map((pin) => pin.name)).toEqual([
+      'BAT+',
+      'BAT-',
+      'M1',
+      'M2',
+      'M3',
+      '+5V',
+      'SIG',
+      'GND',
+    ]);
+  });
 });
 
 describe('buildNets', () => {

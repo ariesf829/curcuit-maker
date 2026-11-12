@@ -56,6 +56,9 @@ export function Inspector() {
         {part.name} · {PART_DEFS[part.type].label}
       </h3>
       {defs.length === 0 && gpios.length === 0 && <p className="hint">No adjustable values.</p>}
+      {part.type === 'esc' && (
+        <p className="hint">Connector model only: ESC switching, BEC output, and brushless motor commutation are not simulated.</p>
+      )}
       {defs.map((d) => {
         const value = part.params?.[d.key] ?? d.default;
         return (
